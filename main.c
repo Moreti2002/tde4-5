@@ -202,7 +202,7 @@ int decimalPara7Segmentos(int digito) {
 void configTimer() {
 	
     TCCR1B = 0b00001101; // Modo CTC e PRESCALER = 1024
-    OCR1A = 15625; // Valor para 1 segundo de contagem (16MHz / 1024)
+    OCR1A = 15625; // Valor para 1 segundo de contagem (16MHz / 1024) --> ira contar 15625 vezes por segundo
     TIMSK1 = TIMSK1 = 0b00000010;; // interrupção por comparacao A habilitada
     sei(); // habilitando interrupcoes
 	
