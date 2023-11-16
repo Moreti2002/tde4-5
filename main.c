@@ -20,8 +20,24 @@ void escreverBCD();
 
 void mostrar_degrau(int habilita_display[], int valorAD);
 void mostrar_volts(int habilita_display[], int valorAD);
-void configTimer();
 int estado_botoes();
+void configTimer();
+void mostrarContagem(int numero, int habilita_display[]);
+
+/* ======================== VARIAVEIS GLOBAIS ============================ */
+int contagem = 0;
+
+/* ================================================================= */
+
+/* ======================== INTERRUPCOES ============================ */
+// interrupcao de comparacao
+ISR(TIMER1_COMPA_vect) {
+	contagem++;
+}
+
+
+/* ================================================================= */
+
 
 // -------------------------------------------------------------------
 int main(void)
@@ -34,6 +50,7 @@ int main(void)
 
 	ConfigAD();
 	SelCanalAd(0);
+	configTimer();
 	
 	while (1) {
 		valorAD = CapturaAD();
@@ -57,8 +74,13 @@ int main(void)
 				break;
 			case 3:
 			// TIMER 0000 - 9999
-				PORTB = habilita_display[2];
-				PORTD = decimalPara7Segmentos(1);
+				if (contagem <= 9999) {
+					mostrarContagem(contagem, habilita_display); // Exibe a contagem nos displays
+					} else {
+					contagem = 0; // Reseta a contagem para reiniciar de 0000
+				}
+				//PORTB = habilita_display[2];
+				//PORTD = decimalPara7Segmentos(1);
 				break;
 			
 			case 4:
@@ -95,10 +117,12 @@ void mostrar_volts(int habilita_display[], int valorAD) {
 	float Volts = valorAD*(5.0/1024.0); // 5v dividido para cada degrau. Total de degrau = 2^(10) = 1024
 	
 
-    int ML = (int)(Volts * 1000) / 1000;
-    int CT = ((int)(Volts * 1000) % 1000) / 100;
-    int DZ = ((int)(Volts * 1000) % 100) / 10;
-    int UN = (int)(Volts * 10) % 10;
+    int ML = (int)Volts; // Parte inteira
+    int unidades_decimal = (int)((Volts - ML) * 1000); // removendo parte inteira e isolando parte decimal
+
+    int CT = unidades_decimal / 100;
+    int DZ = (unidades_decimal % 100) / 10;
+    int UN = unidades_decimal % 10;
 	
 	int magnitude_volts[] = {ML, CT, DZ, UN};
 	
@@ -112,6 +136,7 @@ void mostrar_volts(int habilita_display[], int valorAD) {
 		}
 	}	
 }
+
 
 int estado_botoes() {
 	int bt1 = PINB & (1 << PINB5); // botao branco 
@@ -134,8 +159,6 @@ int estado_botoes() {
 		return 4;
 
 	}
-	
-	
 }
 
 void ConfigAD(void)
@@ -174,4 +197,32 @@ int decimalPara7Segmentos(int digito) {
 
 	return mapa[digito]; // valor correspondente ao digito
 
+}
+
+void configTimer() {
+	
+    TCCR1B = 0b00001101; // Modo CTC e PRESCALER = 1024
+    OCR1A = 15625; // Valor para 1 segundo de contagem (16MHz / 1024)
+    TIMSK1 = TIMSK1 = 0b00000010;; // interrupção por comparacao A habilitada
+    sei(); // habilitando interrupcoes
+	
+}
+
+void mostrarContagem(int numero, int habilita_display[]) { 
+		int ML = numero / 1000;
+		int CT = (numero % 1000) / 100;
+		int DZ = (numero % 100) / 10;
+		int UN = numero % 10;
+		
+		int magnitude_numero[] = {ML, CT, DZ, UN};
+		
+		for (int j = 0; j < 4; j++) {
+			PORTB = 0b00000000;
+			_delay_us(5);
+			for (int i = 0; i < 250; i++) { // 10*10^(-6) * 250 = 2,5 ms --> f = 1/s = 1KHz
+				PORTB = habilita_display[j]; // ERRO1
+				PORTD = decimalPara7Segmentos(magnitude_numero[j]);
+				_delay_us(10);
+			}
+		}		
 }
